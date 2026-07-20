@@ -3,7 +3,7 @@ import Footer from './footer'
 import ExperienceSection from './ExperienceSection'
 import ProjectsSection from './ProjectsSection'
 import TechnicalSkillsSection from './TechnicalSkillsSection'
-// import './resume.css'
+import './resume.css'
 
 function ResumeSite() {
   return (
