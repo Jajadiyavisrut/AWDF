@@ -8,34 +8,53 @@ Student: **Visrut Jajadiya**
 
 ---
 
-## Practical 2: State Management and Routing in React
+## Practical 3: API Integration and Data Rendering in React
 
 ### Objective
-To implement client-side SPA navigation using `react-router-dom` and reactive state management using the `useState` hook in the existing portfolio application.
+To consume a public REST API in React using `fetch` and `useEffect`, while properly managing asynchronous states (`repos`, `loading`, `error`) and providing conditional UI feedback (Spinner, ErrorMessage with Retry, Search Filter).
 
 ---
 
-### Architecture & Routes
-
-* **`<BrowserRouter>`** wraps `<App />` in `main.jsx`
-* **`<NavBar />`** provides client-side navigation using `<NavLink>` to prevent full page reloads and includes a Dark/Light Mode toggle.
-
-| Path | Component | Description |
-|---|---|---|
-| `/` | `Home.jsx` | Portfolio main landing view with Hero section, About, Education, Experience, and Skills. |
-| `/projects` | `Projects.jsx` | Dedicated showcase page displaying selected projects. |
-| `/contact` | `Contact.jsx` | Controlled contact form with live state preview, live character counter, and tooltip toggle. |
-| `*` | `NotFound.jsx` | Custom 404 error page for undefined routes with a home navigation link. |
+### API Endpoint Used
+* **GitHub Public Repositories API**: `https://api.github.com/users/Jajadiyavisrut/repos`
 
 ---
 
-### Key Features & `useState` Implementations
+### Architecture & Components
 
-1. **Client-Side Routing (`react-router-dom` v6)**: Seamless navigation across routes without full page browser reloads.
-2. **Controlled Form State**: `Contact.jsx` uses `useState` to capture input values and display live state changes in real time.
-3. **Live Character Counter**: Real-time counter showing `character / maxChars` below the text area.
-4. **UI Element Visibility Toggle**: `Contact.jsx` uses `useState` (`showTooltip`) to toggle help guidance visibility dynamically.
-5. **Dark / Light Mode Toggle**: `NavBar.jsx` uses `useState` (`isDarkMode`) to toggle the theme on `document.documentElement` (`.dark-mode`).
+* **`Projects.jsx`**:
+  * Triggers API fetch on mount via `useEffect()` with an empty dependency array `[]`.
+  * Manages state with `useState`: `repos` (array), `loading` (boolean), `error` (string/null), and `searchQuery` (string).
+  * Implements live search filtering to filter repositories by name.
+
+* **`Spinner.jsx`**:
+  * Rendered conditionally while `loading === true`.
+  * Features an animated CSS spinner ring.
+
+* **`ErrorMessage.jsx`**:
+  * Rendered conditionally if an API fetch error occurs (`error !== null`).
+  * Includes a **Retry Fetching** button (`onRetry`) to re-trigger data fetching.
+
+---
+
+### Key Features Implemented
+
+1. **REST API Data Fetching**: Asynchronous data retrieval using standard `fetch` API.
+2. **Conditional UI State Rendering**:
+   - `loading` → `<Spinner />`
+   - `error` → `<ErrorMessage message={error} onRetry={fetchRepos} />`
+   - `success` → Render dynamic list of GitHub repositories.
+3. **Repository Metadata**: Renders repository name, star count (`⭐ stargazers_count`), primary language, description, and direct link (`html_url`).
+4. **Live Search Filter**: Real-time text filter input allowing users to filter repositories by title.
+5. **Error Recovery**: Interactive Retry button to re-run `fetchRepos()` on network failure.
+
+---
+
+## Practical 2: State Management and Routing in React
+
+* Client-side routing with `react-router-dom` v6 (`/`, `/projects`, `/contact`, `*`).
+* Dark/Light Mode toggle using `useState` in `NavBar.jsx`.
+* Controlled Contact Form with live character counter and UI tooltip visibility toggle.
 
 ---
 
