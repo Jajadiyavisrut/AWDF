@@ -1030,6 +1030,220 @@ main {
   border-color: #fff;
 }
 
+/* --- Practical 4: Todo List Styles --- */
+
+.todo-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.todo-form-card {
+  padding: 20px;
+}
+
+.todo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.todo-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 14px;
+  transition: all 180ms ease;
+}
+
+.todo-card.completed {
+  opacity: 0.65;
+  background: #fcfcfc;
+}
+
+.dark-mode .todo-card.completed {
+  background: #131316;
+}
+
+.todo-content-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.todo-title {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-h);
+  transition: text-decoration 180ms ease;
+  word-break: break-word;
+}
+
+.todo-card.completed .todo-title {
+  text-decoration: line-through;
+  color: var(--text);
+}
+
+.delete-task-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background 180ms ease, transform 180ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-task-btn:hover {
+  background: #fee2e2;
+  transform: scale(1.1);
+}
+
+.dark-mode .delete-task-btn:hover {
+  background: #451a1a;
+}
+
+/* Custom Checkbox Design */
+.checkbox-container {
+  display: block;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 22px;
+  width: 22px;
+  background-color: transparent;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  border-color: var(--text-h);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #111;
+  border-color: #111;
+}
+
+.dark-mode .checkbox-container input:checked ~ .checkmark {
+  background-color: #fff;
+  border-color: #fff;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 7px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.dark-mode .checkbox-container .checkmark:after {
+  border-color: #111;
+}
+
+.error-banner-alert {
+  animation: fadeIn 300ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Todo Edit and Action Styles */
+
+.todo-edit-row {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.todo-edit-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.todo-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-save-btn {
+  padding: 0.55rem 1rem !important;
+}
+
+.edit-cancel-btn {
+  padding: 0.55rem 1rem !important;
+}
+
+.todo-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-task-btn {
+  transition: transform 180ms ease, background 180ms ease;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-task-btn:hover {
+  background: #f4f4f5;
+  transform: scale(1.1);
+}
+
+.dark-mode .edit-task-btn:hover {
+  background: #27272a;
+}
+
+
+
 
 
 

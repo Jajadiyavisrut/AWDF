@@ -36,6 +36,9 @@ function NavBar() {
         <NavLink to="/contact" className={({ isActive }) => (isActive ? 'active-link' : '')}>
           Contact
         </NavLink>
+        <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active-link' : '')}>
+          Todo List
+        </NavLink>
         <button
           type="button"
           className="theme-toggle-btn"

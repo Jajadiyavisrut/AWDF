@@ -5,6 +5,7 @@ import Footer from './assets/components/footer'
 import Home from './assets/components/Home'
 import Projects from './assets/components/Projects'
 import Contact from './assets/components/Contact'
+import TodoList from './assets/components/TodoList'
 import NotFound from './assets/components/NotFound'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/todo" element={<TodoList />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

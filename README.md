@@ -8,51 +8,52 @@ Student: **Visrut Jajadiya**
 
 ---
 
-## Practical 3: API Integration and Data Rendering in React
+## Practical 4: Connecting React Frontend with Express Backend (To-Do List CRUD Integration)
 
 ### Objective
-To consume a public REST API in React using `fetch` and `useEffect`, while properly managing asynchronous states (`repos`, `loading`, `error`) and providing conditional UI feedback (Spinner, ErrorMessage with Retry, Search Filter).
+To connect the React frontend with the custom Express RESTful API backend, building a complete MERN integration for a Task Management system using asynchronous `fetch` requests (`GET`, `POST`, `PUT`, `DELETE`).
 
----
+### Architecture & Endpoints Integrated
+* **Frontend Component**: [`src/assets/components/TodoList.jsx`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/src/assets/components/TodoList.jsx)
+* **Backend Host**: `http://localhost:5000/tasks`
 
-### API Endpoint Used
-* **GitHub Public Repositories API**: `https://api.github.com/users/Jajadiyavisrut/repos`
-
----
-
-### Architecture & Components
-
-* **`Projects.jsx`**:
-  * Triggers API fetch on mount via `useEffect()` with an empty dependency array `[]`.
-  * Manages state with `useState`: `repos` (array), `loading` (boolean), `error` (string/null), and `searchQuery` (string).
-  * Implements live search filtering to filter repositories by name.
-
-* **`Spinner.jsx`**:
-  * Rendered conditionally while `loading === true`.
-  * Features an animated CSS spinner ring.
-
-* **`ErrorMessage.jsx`**:
-  * Rendered conditionally if an API fetch error occurs (`error !== null`).
-  * Includes a **Retry Fetching** button (`onRetry`) to re-trigger data fetching.
-
----
+| HTTP Method | API Path | Action | Status Code |
+|---|---|---|---|
+| `GET` | `/tasks` | Retrieves all tasks | `200 OK` |
+| `POST` | `/tasks` | Creates a new task | `201 Created` |
+| `PUT` | `/tasks/:id` | Toggles task completion state | `200 OK` |
+| `DELETE` | `/tasks/:id` | Deletes a task by ID | `200 OK` |
 
 ### Key Features Implemented
+1. **Full CRUD Loop**: React UI instantly triggers database changes on the Express server and reflects updates without page reloads.
+2. **CORS Configuration**: Configured custom Access-Control headers inside [`server.js`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/task-manager-api/server.js) to allow cross-origin requests.
+3. **Robust Error & Recovery States**: Displays dynamic loaders (`<Spinner />`) during API calls, a global connection error page (`<ErrorMessage />`) with a **Retry** button, and local operation error banners.
 
-1. **REST API Data Fetching**: Asynchronous data retrieval using standard `fetch` API.
-2. **Conditional UI State Rendering**:
-   - `loading` → `<Spinner />`
-   - `error` → `<ErrorMessage message={error} onRetry={fetchRepos} />`
-   - `success` → Render dynamic list of GitHub repositories.
-3. **Repository Metadata**: Renders repository name, star count (`⭐ stargazers_count`), primary language, description, and direct link (`html_url`).
-4. **Live Search Filter**: Real-time text filter input allowing users to filter repositories by title.
-5. **Error Recovery**: Interactive Retry button to re-run `fetchRepos()` on network failure.
+---
+
+## Practical 3 (Backend): RESTful Express Backend
+
+### Objective
+To design and implement a RESTful backend server with complete CRUD endpoints using an Express middleware pipeline.
+
+* **Server File**: [`task-manager-api/server.js`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/task-manager-api/server.js)
+* **Logger Middleware**: [`task-manager-api/middleware/logger.js`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/task-manager-api/middleware/logger.js)
+* **Header Validator Middleware**: Enforces `Content-Type: application/json` for `POST`/`PUT` requests.
+* **ID Validator Middleware**: Validates task ID parameter as a positive integer.
+* **Global Error Handler**: Catches system/internal errors and returns HTTP 500 cleanly.
+
+---
+
+## Practical 3 (Frontend): API Integration and Data Rendering in React
+
+* Consumes public GitHub REST API: `https://api.github.com/users/Jajadiyavisrut/repos` on the Projects page.
+* Dynamic loading spinner, error fallback, live search filtering by name, and pagination controls.
 
 ---
 
 ## Practical 2: State Management and Routing in React
 
-* Client-side routing with `react-router-dom` v6 (`/`, `/projects`, `/contact`, `*`).
+* Client-side routing with `react-router-dom` v6 (`/`, `/projects`, `/contact`, `/todo`, `*`).
 * Dark/Light Mode toggle using `useState` in `NavBar.jsx`.
 * Controlled Contact Form with live character counter and UI tooltip visibility toggle.
 
@@ -60,17 +61,15 @@ To consume a public REST API in React using `fetch` and `useEffect`, while prope
 
 ### How to Run Locally
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+#### 1. Start Backend Server
+```bash
+cd task-manager-api
+npm install
+npm run dev
+```
 
-2. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Build for production:
-   ```bash
-   npm run build
-   ```
+#### 2. Start Frontend Server
+```bash
+npm install
+npm run dev
+```
