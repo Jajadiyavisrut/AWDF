@@ -67,7 +67,7 @@ function TodoList() {
         return res.json()
       })
       .then((newTask) => {
-        setTasks((prevTasks) => [...prevTasks, newTask])
+        setTasks((prevTasks) => [newTask, ...prevTasks])
         setNewTaskTitle('')
       })
       .catch((err) => {
@@ -95,7 +95,7 @@ function TodoList() {
       })
       .then((updatedTask) => {
         setTasks((prevTasks) =>
-          prevTasks.map((t) => (t.id === id ? updatedTask : t))
+          prevTasks.map((t) => (t._id === id ? updatedTask : t))
         )
       })
       .catch((err) => {
@@ -105,7 +105,7 @@ function TodoList() {
 
   // Start editing a task
   const handleStartEdit = (task) => {
-    setEditingTaskId(task.id)
+    setEditingTaskId(task._id)
     setEditTitle(task.title)
     setActionError(null)
   }
@@ -138,7 +138,7 @@ function TodoList() {
       })
       .then((updatedTask) => {
         setTasks((prevTasks) =>
-          prevTasks.map((t) => (t.id === id ? updatedTask : t))
+          prevTasks.map((t) => (t._id === id ? updatedTask : t))
         )
         setEditingTaskId(null)
         setEditTitle('')
@@ -163,7 +163,7 @@ function TodoList() {
         return res.json()
       })
       .then(() => {
-        setTasks((prevTasks) => prevTasks.filter((t) => t.id !== id))
+        setTasks((prevTasks) => prevTasks.filter((t) => t._id !== id))
       })
       .catch((err) => {
         setActionError(err.message)
@@ -226,12 +226,12 @@ function TodoList() {
                 <div className="todo-grid">
                   {tasks.map((task) => (
                     <article
-                      key={task.id}
+                      key={task._id}
                       className={`todo-card panel ${task.completed ? 'completed' : ''} ${
-                        editingTaskId === task.id ? 'editing' : ''
-                      }`}
+                        editingTaskId === task._id ? 'editing' : ''
+                        }`}
                     >
-                      {editingTaskId === task.id ? (
+                      {editingTaskId === task._id ? (
                         /* Editing View */
                         <div className="todo-edit-row">
                           <input
@@ -245,7 +245,7 @@ function TodoList() {
                             <button
                               type="button"
                               className="primary-button edit-save-btn"
-                              onClick={() => handleSaveEdit(task.id)}
+                              onClick={() => handleSaveEdit(task._id)}
                             >
                               Save
                             </button>
@@ -266,7 +266,7 @@ function TodoList() {
                               <input
                                 type="checkbox"
                                 checked={task.completed}
-                                onChange={() => handleToggleTask(task.id, task.completed)}
+                                onChange={() => handleToggleTask(task._id, task.completed)}
                               />
                               <span className="checkmark"></span>
                             </label>
@@ -285,7 +285,7 @@ function TodoList() {
                             <button
                               type="button"
                               className="delete-task-btn"
-                              onClick={() => handleDeleteTask(task.id)}
+                              onClick={() => handleDeleteTask(task._id)}
                               aria-label="Delete task"
                             >
                               🗑️
