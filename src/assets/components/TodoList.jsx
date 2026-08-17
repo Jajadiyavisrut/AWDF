@@ -10,10 +10,22 @@ function TodoList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionError, setActionError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   // Edit states
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editTitle, setEditTitle] = useState('')
+
+  // Modal confirmation state
+  const [taskToDelete, setTaskToDelete] = useState(null)
+
+  // Helper to show temporary notification
+  const showNotification = (msg) => {
+    setSuccessMessage(msg)
+    setTimeout(() => {
+      setSuccessMessage(null)
+    }, 3000)
+  }
 
   // Fetch all tasks from Express server
   const fetchTasks = () => {
@@ -69,6 +81,7 @@ function TodoList() {
       .then((newTask) => {
         setTasks((prevTasks) => [newTask, ...prevTasks])
         setNewTaskTitle('')
+        showNotification('Task created successfully!')
       })
       .catch((err) => {
         setActionError(err.message)
@@ -97,6 +110,7 @@ function TodoList() {
         setTasks((prevTasks) =>
           prevTasks.map((t) => (t._id === id ? updatedTask : t))
         )
+        showNotification('Task updated successfully!')
       })
       .catch((err) => {
         setActionError(err.message)
@@ -142,15 +156,19 @@ function TodoList() {
         )
         setEditingTaskId(null)
         setEditTitle('')
+        showNotification('Task updated successfully!')
       })
       .catch((err) => {
         setActionError(err.message)
       })
   }
 
-  // Delete a task (DELETE)
-  const handleDeleteTask = (id) => {
+  // Confirmed execution of task deletion
+  const confirmDeleteTask = () => {
+    if (!taskToDelete) return
+    const id = taskToDelete._id
     setActionError(null)
+
     fetch(`${API_URL}/${id}`, {
       method: 'DELETE',
     })
@@ -164,9 +182,13 @@ function TodoList() {
       })
       .then(() => {
         setTasks((prevTasks) => prevTasks.filter((t) => t._id !== id))
+        showNotification('Task deleted successfully!')
       })
       .catch((err) => {
         setActionError(err.message)
+      })
+      .finally(() => {
+        setTaskToDelete(null)
       })
   }
 
@@ -178,9 +200,16 @@ function TodoList() {
           <h2>Task Manager To-Do List</h2>
         </div>
 
+        {/* Success Notifications */}
+        {successMessage && (
+          <div className="success-banner error-banner-alert" style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', marginBottom: '16px' }}>
+            ✅ {successMessage}
+          </div>
+        )}
+
         {/* Action Error Alerts */}
         {actionError && (
-          <div className="success-banner error-banner-alert" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5' }}>
+          <div className="success-banner error-banner-alert" style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', marginBottom: '16px' }}>
             ⚠️ {actionError}
           </div>
         )}
@@ -229,7 +258,7 @@ function TodoList() {
                       key={task._id}
                       className={`todo-card panel ${task.completed ? 'completed' : ''} ${
                         editingTaskId === task._id ? 'editing' : ''
-                        }`}
+                      }`}
                     >
                       {editingTaskId === task._id ? (
                         /* Editing View */
@@ -285,7 +314,7 @@ function TodoList() {
                             <button
                               type="button"
                               className="delete-task-btn"
-                              onClick={() => handleDeleteTask(task._id)}
+                              onClick={() => setTaskToDelete(task)}
                               aria-label="Delete task"
                             >
                               🗑️
@@ -300,6 +329,35 @@ function TodoList() {
             </div>
           )}
         </div>
+
+        {/* Custom Confirmation Modal */}
+        {taskToDelete && (
+          <div className="modal-overlay">
+            <div className="modal-card panel">
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem' }}>Confirm Deletion</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text)' }}>
+                Are you sure you want to delete <strong>"{taskToDelete.title}"</strong>? This action cannot be undone.
+              </p>
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setTaskToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="primary-button delete-confirm-btn"
+                  onClick={confirmDeleteTask}
+                  style={{ background: '#dc2626', color: '#ffffff', borderColor: '#dc2626' }}
+                >
+                  Delete Task
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   )
