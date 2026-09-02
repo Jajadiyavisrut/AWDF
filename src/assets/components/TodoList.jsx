@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Spinner from './Spinner'
 import ErrorMessage from './ErrorMessage'
+import { clearToken, getToken } from './auth'
 
 function TodoList() {
-  const API_URL = 'http://localhost:5000/tasks'
+  const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/tasks`
+  const navigate = useNavigate()
 
   const [tasks, setTasks] = useState([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -19,6 +22,33 @@ function TodoList() {
   // Modal confirmation state
   const [taskToDelete, setTaskToDelete] = useState(null)
 
+  const handleUnauthorized = () => {
+    clearToken()
+    navigate('/login', { replace: true })
+  }
+
+  const authenticatedFetch = (url, options = {}) => {
+    const token = getToken()
+    if (!token) {
+      handleUnauthorized()
+      return Promise.reject(new Error('Please log in to manage tasks.'))
+    }
+
+    return fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+      },
+    }).then((res) => {
+      if (res.status === 401) {
+        handleUnauthorized()
+        throw new Error('Your session has expired. Please log in again.')
+      }
+      return res
+    })
+  }
+
   // Helper to show temporary notification
   const showNotification = (msg) => {
     setSuccessMessage(msg)
@@ -31,7 +61,7 @@ function TodoList() {
   const fetchTasks = () => {
     setLoading(true)
     setError(null)
-    fetch(API_URL)
+    authenticatedFetch(API_URL)
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Failed to load tasks (Status: ${res.status})`)
@@ -54,7 +84,17 @@ function TodoList() {
   }
 
   useEffect(() => {
-    fetchTasks()
+    const fetchOnMount = window.setTimeout(() => {
+      if (getToken()) {
+        fetchTasks()
+      } else {
+        handleUnauthorized()
+      }
+    }, 0)
+
+    return () => window.clearTimeout(fetchOnMount)
+    // These handlers intentionally use the current token and navigate target on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Create a new task (POST)
@@ -63,7 +103,7 @@ function TodoList() {
     if (!newTaskTitle.trim()) return
     setActionError(null)
 
-    fetch(API_URL, {
+    authenticatedFetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,7 +131,7 @@ function TodoList() {
   // Toggle task completion (PUT)
   const handleToggleTask = (id, currentCompleted) => {
     setActionError(null)
-    fetch(`${API_URL}/${id}`, {
+    authenticatedFetch(`${API_URL}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -135,7 +175,7 @@ function TodoList() {
     if (!editTitle.trim()) return
     setActionError(null)
 
-    fetch(`${API_URL}/${id}`, {
+    authenticatedFetch(`${API_URL}/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -169,7 +209,7 @@ function TodoList() {
     const id = taskToDelete._id
     setActionError(null)
 
-    fetch(`${API_URL}/${id}`, {
+    authenticatedFetch(`${API_URL}/${id}`, {
       method: 'DELETE',
     })
       .then((res) => {
@@ -198,6 +238,9 @@ function TodoList() {
         <div className="section-heading">
           <p className="section-tag">Express CRUD Integration</p>
           <h2>Task Manager To-Do List</h2>
+          <button type="button" className="ghost-button" onClick={handleUnauthorized}>
+            Logout
+          </button>
         </div>
 
         {/* Success Notifications */}

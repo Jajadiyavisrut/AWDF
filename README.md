@@ -73,3 +73,19 @@ npm run dev
 npm install
 npm run dev
 ```
+
+### Practical 7: Authentication and Middleware Pipeline
+
+The task API now supports JWT authentication:
+
+1. Copy `task-manager-api/.env.example` to `task-manager-api/.env`, keep `MONGO_URI` pointed at the `p7` database, and set a private `JWT_SECRET`.
+2. Start MongoDB, then run `npm install` and `npm run dev` from `task-manager-api`.
+3. Open the frontend and use `/login` to register or sign in.
+
+Available auth endpoints:
+
+* `POST /register` with `{ "email": "...", "password": "..." }`
+* `POST /login` returns a JWT valid for one hour.
+* `GET /me` requires `Authorization: Bearer <token>`.
+
+All application routes except `/login` require authentication. `/tasks` endpoints require the same Bearer token. Registration passwords must contain at least 8 characters, uppercase and lowercase letters, a number, and a special character. Task request bodies are validated before reaching Mongoose; missing or blank titles return `400`. The frontend stores the token locally, adds it to task requests, clears it on logout or `401`, and redirects to `/login` when the session expires.
