@@ -13,6 +13,16 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendEmail } = require('./services/mailer');
+const {
+  cache,
+  getUserTasksKey,
+  getSingleTaskKey,
+  recordHit,
+  recordMiss,
+  invalidateUserTasks,
+  getCustomStats,
+  resetStats,
+} = require('./cache');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -179,22 +189,61 @@ app.get('/me', authenticateToken, async (req, res, next) => {
   }
 });
 
+// --- Cache Telemetry & Debug Endpoints (Practical 9 Supplementary) ---
+app.get('/cache/stats', (req, res) => {
+  res.status(200).json(getCustomStats());
+});
+
+app.post('/cache/clear', (req, res) => {
+  cache.flushAll();
+  resetStats();
+  res.status(200).json({ message: 'In-memory cache flushed successfully.' });
+});
+
 // --- Protected REST endpoints (CRUD using Mongoose) ---
 app.use('/tasks', authenticateToken);
 
-// 1. GET /tasks - Get all tasks
+// 1. GET /tasks - Get all tasks with in-memory caching (Practical 9 Step 3)
 app.get('/tasks', async (req, res, next) => {
   try {
+    const userId = req.user?.id || 'default';
+    const cacheKey = getUserTasksKey(userId);
+
+    // Cache check: HIT -> return cached data immediately
+    const cachedTasks = cache.get(cacheKey);
+    if (cachedTasks) {
+      recordHit();
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cachedTasks);
+    }
+
+    // Cache MISS: query MongoDB, store in cache, return data
+    recordMiss();
     const tasks = await Task.find({ owner: req.user.id }).sort({ createdAt: -1 });
+    cache.set(cacheKey, tasks);
+    res.setHeader('X-Cache', 'MISS');
     res.status(200).json(tasks);
   } catch (err) {
     next(err);
   }
 });
 
-// 2. GET /tasks/:id - Get a task by ID (Supplementary requirement)
+// 2. GET /tasks/:id - Get a task by ID with single-task caching (Supplementary Problem 1)
 app.get('/tasks/:id', validateId, async (req, res, next) => {
   try {
+    const userId = req.user?.id || 'default';
+    const cacheKey = getSingleTaskKey(userId, req.params.id);
+
+    // Cache check for single task
+    const cachedTask = cache.get(cacheKey);
+    if (cachedTask) {
+      recordHit();
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cachedTask);
+    }
+
+    // Cache MISS: query MongoDB
+    recordMiss();
     const task = await Task.findOne({ _id: req.params.id, owner: req.user.id });
     if (!task) {
       return res.status(404).json({
@@ -202,13 +251,16 @@ app.get('/tasks/:id', validateId, async (req, res, next) => {
         message: `Task with ID ${req.params.id} was not found.`
       });
     }
+
+    cache.set(cacheKey, task);
+    res.setHeader('X-Cache', 'MISS');
     res.status(200).json(task);
   } catch (err) {
     next(err);
   }
 });
 
-// 3. POST /tasks - Create a new task
+// 3. POST /tasks - Create a new task (Invalidate cache on write - Step 4)
 app.post('/tasks', validateTask(true), async (req, res, next) => {
   try {
     const { title, description, priority } = req.body;
@@ -220,6 +272,10 @@ app.post('/tasks', validateTask(true), async (req, res, next) => {
       priority,
       status: 'pending'
     });
+
+    // Invalidate cached all-tasks collection for this user so stale data is never served
+    invalidateUserTasks(req.user.id);
+
     notifySessionUser(req.user.id, 'Task created', `Task "${newTask.title}" was created with status: ${newTask.status}.`);
     res.status(201).json(newTask);
   } catch (err) {
@@ -272,6 +328,10 @@ app.put('/tasks/:id', validateId, validateTask(), async (req, res, next) => {
     const statusMessage = nextStatus !== currentStatus
       ? `Status changed from ${currentStatus} to ${nextStatus}.`
       : `Status remains ${nextStatus}.`;
+
+    // Invalidate cached all-tasks and single-task entry upon update (Step 4 & Supplementary 1)
+    invalidateUserTasks(req.user.id, req.params.id);
+
     notifySessionUser(
       req.user.id,
       `Task update: ${updatedTask.title}`,
@@ -293,6 +353,10 @@ app.delete('/tasks/:id', validateId, async (req, res, next) => {
         message: `Task with ID ${req.params.id} was not found.`
       });
     }
+
+    // Invalidate cached all-tasks and single-task entry upon deletion (Step 4 & Supplementary 1)
+    invalidateUserTasks(req.user.id, req.params.id);
+
     notifySessionUser(req.user.id, 'Task deleted', `Task "${deletedTask.title}" was deleted.`);
     res.status(200).json({
       message: 'Task deleted successfully',

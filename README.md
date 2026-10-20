@@ -182,3 +182,116 @@ TaskReportModal + jsPDF (~810 kB)   ──► Loaded ONLY when user clicks "View
    - In very small applications (< 50–100 kB total bundle) where splitting into tiny 1 kB chunks adds HTTP request overhead (DNS lookups, TCP handshakes, TLS negotiation).
    - For mission-critical above-the-fold content where showing a loading spinner degrades the core user experience.
    - When the user is guaranteed to visit all views immediately, making preloading or a single bundle more efficient.
+
+---
+
+## Practical 9: In-Memory Caching and Query Optimization
+
+### Objective
+To implement server-side in-memory caching using `node-cache`, ensure data consistency through proactive cache invalidation on write operations (`POST`, `PUT`, `DELETE`), evaluate single-task and collection-level caching, expose debug telemetry, and empirically measure API response time speedups.
+
+---
+
+### Architecture & Caching Pipeline
+
+```
+GET /tasks (or /tasks/:id) Request
+              │
+              ▼
+    Cache Check (node-cache)
+     ├── HIT (X-Cache: HIT)  ──────────────► Return in-memory cached JSON (Instant ~1.3 ms)
+     └── MISS (X-Cache: MISS) ─────────────► Query MongoDB Collection
+                                                   │
+                                                   ├── Store in node-cache (TTL: 60s)
+                                                   └── Return fresh JSON (~4.6 ms)
+
+Write Operations (POST /tasks, PUT /tasks/:id, DELETE /tasks/:id)
+              │
+              ▼
+   Persist change to MongoDB
+              │
+              ▼
+   Cache Invalidation (invalidateUserTasks)
+     ├── Delete user collection key: tasks:<userId>:all
+     └── Delete single task key (if applicable): task:<userId>:<taskId>
+              │
+              ▼
+   Subsequent GET is guaranteed a fresh cache MISS (No stale reads!)
+```
+
+---
+
+### Key Features Implemented
+
+1. **Shared Cache Module ([`task-manager-api/cache.js`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/task-manager-api/cache.js))**:
+   - Initialized `NodeCache` instance with `stdTTL: 60` (60 seconds) and `checkperiod: 120`.
+   - Formulates user-scoped cache keys (`tasks:<userId>:all` and `task:<userId>:<taskId>`) to ensure strict multi-tenant isolation and security.
+
+2. **Collection Caching (`GET /tasks`)**:
+   - Inspects in-memory cache first before hitting the database.
+   - Sets response header `X-Cache: HIT` on cache hits and `X-Cache: MISS` on initial or post-invalidation database fetches.
+
+3. **Single Task Caching (Supplementary Problem 1: `GET /tasks/:id`)**:
+   - Single task queries are cached under dedicated item keys (`task:<userId>:<taskId>`).
+   - Ensures high-throughput reads on frequently viewed task details without repeated database queries.
+
+4. **Correct Cache Invalidation on Writes (`POST`, `PUT`, `DELETE`)**:
+   - `POST /tasks`: Evicts `tasks:<userId>:all` so newly created tasks immediately appear in the next fetch.
+   - `PUT /tasks/:id`: Evicts both `tasks:<userId>:all` and `task:<userId>:<taskId>` when title, status, or priority changes.
+   - `DELETE /tasks/:id`: Evicts both `tasks:<userId>:all` and `task:<userId>:<taskId>`.
+
+5. **Cache Telemetry & Debug Endpoint (Supplementary Problem 2: `GET /cache/stats`)**:
+   - Exposes live runtime cache statistics: total hits, misses, hit ratio (`hits / total`), active keys count, and internal memory usage.
+   - Includes `POST /cache/clear` endpoint to flush in-memory storage during automated testing.
+
+---
+
+### Empirical Response Time Benchmark
+
+Measured using [`task-manager-api/test_cache_benchmark.js`](file:///v:/AIML(sub)/sem%205/ADWF/Practical/AWDF/task-manager-api/test_cache_benchmark.js) with 10 seeded tasks under identical local environment conditions:
+
+| Sample Reading | Uncached (MongoDB Query) | Cached (`node-cache` Memory) | Cache Header |
+|---|---:|---:|:---:|
+| **Sample 1** | 4.53 ms | 1.47 ms | `X-Cache: HIT` |
+| **Sample 2** | 4.88 ms | 1.32 ms | `X-Cache: HIT` |
+| **Sample 3** | 4.41 ms | 1.44 ms | `X-Cache: HIT` |
+| **Average Response Time** | **4.61 ms** | **1.41 ms** | **3.3x Speedup** |
+
+*Single Task Endpoint (`GET /tasks/:id`):*
+- **1st Call (Cache MISS):** 5.91 ms
+- **2nd Call (Cache HIT):** 1.77 ms (3.34x faster)
+
+*Cache Invalidation Verification:*
+- Updating a task via `PUT /tasks/:id` immediately invalidated the cache.
+- The next `GET /tasks` took 5.78 ms with `X-Cache: MISS`, confirming fresh database synchronization.
+
+---
+
+### TTL Trade-Off Experimentation (Supplementary Problem 3)
+
+| TTL Window | Memory Overhead | Perceived Data Staleness | Best Use Case |
+|---|---|---|---|
+| **Short (5s – 10s)** | Minimal; keys expire rapidly | Very low; data is practically near real-time | Fast-changing collaborative sprint boards |
+| **Medium (60s - Default)** | Balanced; keeps hot data in memory | Zero with write invalidation; 60s max for passive external changes | **General Task Management APIs (Optimal)** |
+| **Long (300s+)** | Higher memory footprint for large collections | Risk of serving stale data if external systems bypass the API | Static reference data, read-heavy catalogs |
+
+---
+
+### Key Questions & Viva Analysis
+
+1. **Why must the cache be invalidated on every write operation, and what would happen to data correctness if it were not?**
+   - In-memory caching stores a snapshot of data. When a user creates (`POST`), updates (`PUT`), or deletes (`DELETE`) a task, the underlying database state changes.
+   - If the cache were not invalidated, subsequent `GET` requests would continue serving the old snapshot until the TTL expired. A user would see deleted tasks reappear, status changes revert, or new tasks vanish upon page refresh—violating fundamental CRUD data consistency and user trust.
+
+2. **What is a reasonable TTL (time-to-live) for cached data in a task management context, and what trade-off does TTL length represent?**
+   - A TTL of **60 seconds** is standard and practical for task management.
+   - **Trade-off:**
+     - *Longer TTL*: Maximizes cache hit ratio and offloads database read traffic, but increases memory usage and the risk of serving stale data if third-party background jobs update the database directly.
+     - *Shorter TTL*: Guarantees data freshness even if invalidation hooks fail, but increases database query frequency and reduces the speedup benefits of caching.
+
+3. **Why is in-memory caching (`node-cache`) not suitable for a multi-server/multi-instance deployment, even though it works fine in this lab?**
+   - `node-cache` stores data in the **local heap memory of a single Node.js process**.
+   - In a production environment with horizontal scaling (e.g. 3 server instances behind a load balancer):
+     - A write request routed to Instance A invalidates Instance A's local cache.
+     - A subsequent read routed to Instance B or Instance C will still read their stale local memory!
+     - In distributed architectures, an external, centralized caching tier such as **Redis** or **Memcached** must be used so all instances share a single, synchronized cache source of truth.
