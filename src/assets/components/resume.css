@@ -578,6 +578,34 @@ main {
   padding: 32px 0 40px;
 }
 
+.page-loader {
+  min-height: 320px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+
+.page-loader p {
+  margin: 0;
+}
+
+.page-loader-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-h);
+  border-radius: 50%;
+  animation: page-loader-spin 700ms linear infinite;
+}
+
+@keyframes page-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .tooltip-section {
   margin-bottom: 24px;
 }
@@ -1042,10 +1070,66 @@ main {
   padding: 20px;
 }
 
+.logged-in-email {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.status-filter-button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-filter-button:hover,
+.status-filter-button.active {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
 .todo-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+}
+
+.status-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.status-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status-group-title {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-h);
+  font-size: 1rem;
 }
 
 .todo-card {
@@ -1266,6 +1350,10 @@ main {
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   animation: modalScale 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.report-modal-panel {
+  max-width: 620px;
 }
 
 .delete-confirm-btn:hover {

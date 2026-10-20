@@ -51,7 +51,36 @@ function Projects() {
   }
 
   useEffect(() => {
-    fetchRepos(MY_GITHUB_USERNAME)
+    let ignore = false
+    fetch(`https://api.github.com/users/${MY_GITHUB_USERNAME}/repos?sort=updated&per_page=100`)
+      .then((res) => {
+        if (res.status === 404) {
+          throw new Error(`GitHub user "${MY_GITHUB_USERNAME}" was not found. Please check the username.`)
+        }
+        if (!res.ok) {
+          throw new Error(`Failed to fetch repositories for "${MY_GITHUB_USERNAME}" (Status: ${res.status})`)
+        }
+        return res.json()
+      })
+      .then((data) => {
+        if (!ignore && Array.isArray(data)) {
+          setRepos(data)
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err.message || 'Network error occurred while connecting to GitHub')
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   const handleMyReposClick = () => {

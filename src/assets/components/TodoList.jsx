@@ -1,15 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense, memo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Spinner from './Spinner'
 import ErrorMessage from './ErrorMessage'
 import { clearToken, getToken } from './auth'
 
+// Supplementary Problem 1: Lazy load heavy third-party report component (jspdf)
+const TaskReportModal = lazy(() => import('./TaskReportModal'))
+
 function TodoList() {
-  const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/tasks`
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const API_URL = `${API_BASE}/tasks`
   const navigate = useNavigate()
 
   const [tasks, setTasks] = useState([])
+  const [userEmail, setUserEmail] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [activeFilter, setActiveFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionError, setActionError] = useState(null)
@@ -21,6 +27,9 @@ function TodoList() {
 
   // Modal confirmation state
   const [taskToDelete, setTaskToDelete] = useState(null)
+
+  // Lazy loaded report modal state
+  const [showReportModal, setShowReportModal] = useState(false)
 
   const handleUnauthorized = () => {
     clearToken()
@@ -83,9 +92,17 @@ function TodoList() {
       })
   }
 
+  const fetchCurrentUser = () => {
+    authenticatedFetch(`${API_BASE}/me`)
+      .then((res) => res.json())
+      .then((user) => setUserEmail(user.email || ''))
+      .catch(() => setUserEmail(''))
+  }
+
   useEffect(() => {
     const fetchOnMount = window.setTimeout(() => {
       if (getToken()) {
+        fetchCurrentUser()
         fetchTasks()
       } else {
         handleUnauthorized()
@@ -108,7 +125,7 @@ function TodoList() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: newTaskTitle }),
+      body: JSON.stringify({ title: newTaskTitle, status: 'pending' }),
     })
       .then((res) => {
         if (!res.ok) {
@@ -128,50 +145,62 @@ function TodoList() {
       })
   }
 
-  // Toggle task completion (PUT)
-  const handleToggleTask = (id, currentCompleted) => {
+  const getTaskStatus = (task) => task?.status || (task?.completed ? 'completed' : 'pending')
+
+  const handleStatusChange = useCallback((id, status) => {
     setActionError(null)
+    const currentTask = tasks.find((task) => task._id === id)
+    const currentStatus = getTaskStatus(currentTask)
+    const statusOrder = { pending: 0, working: 1, completed: 2 }
+    if (statusOrder[status] < statusOrder[currentStatus]) {
+      setActionError('Task status can only move from pending to ongoing to completed.')
+      return
+    }
     authenticatedFetch(`${API_URL}/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ completed: !currentCompleted }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, completed: status === 'completed' }),
     })
       .then((res) => {
         if (!res.ok) {
           return res.json().then((errData) => {
-            throw new Error(errData.message || 'Failed to update task.')
+            throw new Error(errData.message || 'Failed to update task status.')
           })
         }
         return res.json()
       })
       .then((updatedTask) => {
-        setTasks((prevTasks) =>
-          prevTasks.map((t) => (t._id === id ? updatedTask : t))
-        )
-        showNotification('Task updated successfully!')
+        setTasks((prevTasks) => prevTasks.map((task) => (
+          task._id === id ? updatedTask : task
+        )))
+        showNotification('Task status updated successfully!')
       })
-      .catch((err) => {
-        setActionError(err.message)
-      })
-  }
+      .catch((err) => setActionError(err.message))
+  }, [tasks])
 
-  // Start editing a task
-  const handleStartEdit = (task) => {
+  // Start editing a task (memoized callback)
+  const handleStartEdit = useCallback((task) => {
     setEditingTaskId(task._id)
     setEditTitle(task.title)
     setActionError(null)
-  }
+  }, [])
 
-  // Cancel editing
-  const handleCancelEdit = () => {
+  // Cancel editing (memoized callback)
+  const handleCancelEdit = useCallback(() => {
     setEditingTaskId(null)
     setEditTitle('')
-  }
+  }, [])
+
+  const handleEditTitleChange = useCallback((value) => {
+    setEditTitle(value)
+  }, [])
+
+  const handleDeleteClick = useCallback((task) => {
+    setTaskToDelete(task)
+  }, [])
 
   // Save updated task title (PUT)
-  const handleSaveEdit = (id) => {
+  const handleSaveEdit = useCallback((id) => {
     if (!editTitle.trim()) return
     setActionError(null)
 
@@ -201,7 +230,7 @@ function TodoList() {
       .catch((err) => {
         setActionError(err.message)
       })
-  }
+  }, [editTitle])
 
   // Confirmed execution of task deletion
   const confirmDeleteTask = () => {
@@ -232,15 +261,46 @@ function TodoList() {
       })
   }
 
+  const statusGroups = [
+    ['pending', 'Pending'],
+    ['working', 'Ongoing'],
+    ['completed', 'Completed'],
+  ]
+  const visibleGroups = activeFilter === 'all'
+    ? statusGroups
+    : statusGroups.filter(([status]) => status === activeFilter)
+  const hasVisibleTasks = visibleGroups.some(([status]) => (
+    tasks.some((task) => getTaskStatus(task) === status)
+  ))
+
   return (
     <div className="page-route-container">
       <section className="section-block">
         <div className="section-heading">
           <p className="section-tag">Express CRUD Integration</p>
           <h2>Task Manager To-Do List</h2>
-          <button type="button" className="ghost-button" onClick={handleUnauthorized}>
-            Logout
-          </button>
+          {userEmail && <p className="logged-in-email">{userEmail}</p>}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setShowReportModal(true)}
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                fontSize: '0.9rem',
+              }}
+            >
+              📊 View Analytics &amp; PDF Report
+            </button>
+            <button type="button" className="ghost-button" onClick={handleUnauthorized}>
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Success Notifications */}
@@ -279,6 +339,24 @@ function TodoList() {
                 </button>
               </div>
             </form>
+            <div className="status-filter-bar" role="group" aria-label="Filter tasks by status">
+              {[
+                ['all', 'All'],
+                ['pending', 'Pending'],
+                ['working', 'Ongoing'],
+                ['completed', 'Completed'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`status-filter-button ${activeFilter === value ? 'active' : ''}`}
+                  onClick={() => setActiveFilter(value)}
+                  aria-pressed={activeFilter === value}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Tasks List */}
@@ -290,83 +368,39 @@ function TodoList() {
 
           {!loading && !error && (
             <div className="todo-list-container">
-              {tasks.length === 0 ? (
+              {!hasVisibleTasks ? (
                 <div className="empty-search-box panel">
-                  <p>No tasks remaining! Add a task above to get started.</p>
+                  <p>{tasks.length === 0 ? 'No tasks remaining! Add a task above to get started.' : 'No tasks match this status.'}</p>
                 </div>
               ) : (
-                <div className="todo-grid">
-                  {tasks.map((task) => (
-                    <article
-                      key={task._id}
-                      className={`todo-card panel ${task.completed ? 'completed' : ''} ${
-                        editingTaskId === task._id ? 'editing' : ''
-                      }`}
-                    >
-                      {editingTaskId === task._id ? (
-                        /* Editing View */
-                        <div className="todo-edit-row">
-                          <input
-                            type="text"
-                            className="search-input todo-edit-input"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            required
-                          />
-                          <div className="todo-edit-actions">
-                            <button
-                              type="button"
-                              className="primary-button edit-save-btn"
-                              onClick={() => handleSaveEdit(task._id)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="ghost-button edit-cancel-btn"
-                              onClick={handleCancelEdit}
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                <div className="status-groups">
+                  {visibleGroups.map(([status, label]) => {
+                    const groupTasks = tasks.filter((task) => getTaskStatus(task) === status)
+                    if (groupTasks.length === 0) return null
+
+                    return (
+                      <section className="status-group" key={status}>
+                        <h3 className="status-group-title">{label}</h3>
+                        <div className="todo-grid">
+                          {groupTasks.map((task) => (
+                            <TaskCard
+                              key={task._id}
+                              task={task}
+                              taskStatus={getTaskStatus(task)}
+                              isEditing={editingTaskId === task._id}
+                              editTitle={editTitle}
+                              onEditTitleChange={handleEditTitleChange}
+                              onSaveEdit={handleSaveEdit}
+                              onCancelEdit={handleCancelEdit}
+                              onStartEdit={handleStartEdit}
+                              onStatusChange={handleStatusChange}
+                              onDeleteClick={handleDeleteClick}
+                            />
+                          ))}
                         </div>
-                      ) : (
-                        /* Regular View */
-                        <>
-                          <div className="todo-content-row">
-                            <label className="checkbox-container">
-                              <input
-                                type="checkbox"
-                                checked={task.completed}
-                                onChange={() => handleToggleTask(task._id, task.completed)}
-                              />
-                              <span className="checkmark"></span>
-                            </label>
-                            <span className="todo-title">{task.title}</span>
-                          </div>
-                          <div className="todo-actions-row">
-                            <button
-                              type="button"
-                              className="edit-task-btn"
-                              onClick={() => handleStartEdit(task)}
-                              aria-label="Edit task title"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '6px' }}
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              type="button"
-                              className="delete-task-btn"
-                              onClick={() => setTaskToDelete(task)}
-                              aria-label="Delete task"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </article>
-                  ))}
+                      </section>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -401,9 +435,112 @@ function TodoList() {
             </div>
           </div>
         )}
+
+        {/* Lazy-Loaded Task Analytics & PDF Report Modal (Supplementary Problem 1) */}
+        {showReportModal && (
+          <Suspense fallback={<div className="modal-overlay"><Spinner username="Report Generator" /></div>}>
+            <TaskReportModal
+              tasks={tasks}
+              userEmail={userEmail}
+              onClose={() => setShowReportModal(false)}
+            />
+          </Suspense>
+        )}
       </section>
     </div>
   )
 }
+
+/**
+ * TaskCard - Supplementary Problem 3 & Post-Lab Work:
+ * Memoized with React.memo to prevent unnecessary re-renders of the task list
+ * whenever the user types into the `newTaskTitle` input in the parent component.
+ */
+const TaskCard = memo(function TaskCard({
+  task,
+  taskStatus,
+  isEditing,
+  editTitle,
+  onEditTitleChange,
+  onSaveEdit,
+  onCancelEdit,
+  onStartEdit,
+  onStatusChange,
+  onDeleteClick,
+}) {
+  return (
+    <article
+      className={`todo-card panel ${task.completed ? 'completed' : ''} ${
+        isEditing ? 'editing' : ''
+      }`}
+    >
+      {isEditing ? (
+        /* Editing View */
+        <div className="todo-edit-row">
+          <input
+            type="text"
+            className="search-input todo-edit-input"
+            value={editTitle}
+            onChange={(e) => onEditTitleChange(e.target.value)}
+            required
+            aria-label="Edit task title"
+          />
+          <div className="todo-edit-actions">
+            <button
+              type="button"
+              className="primary-button edit-save-btn"
+              onClick={() => onSaveEdit(task._id)}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="ghost-button edit-cancel-btn"
+              onClick={onCancelEdit}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Regular View */
+        <>
+          <div className="todo-content-row">
+            <span className="todo-title">{task.title}</span>
+            <select
+              className="task-status-select"
+              value={taskStatus}
+              onChange={(e) => onStatusChange(task._id, e.target.value)}
+              aria-label={`Status for ${task.title}`}
+            >
+              <option value="pending" disabled={taskStatus !== 'pending'}>Pending</option>
+              <option value="working" disabled={taskStatus === 'completed'}>Ongoing</option>
+              <option value="completed" disabled={taskStatus === 'pending'}>Completed</option>
+            </select>
+          </div>
+          <div className="todo-actions-row">
+            <button
+              type="button"
+              className="edit-task-btn"
+              onClick={() => onStartEdit(task)}
+              aria-label="Edit task title"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '6px' }}
+            >
+              ✏️
+            </button>
+            <button
+              type="button"
+              className="delete-task-btn"
+              onClick={() => onDeleteClick(task)}
+              aria-label="Delete task"
+            >
+              🗑️
+            </button>
+          </div>
+        </>
+      )}
+    </article>
+  )
+})
 
 export default TodoList
