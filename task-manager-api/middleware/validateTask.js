@@ -1,5 +1,5 @@
 const validateTask = (requireTitle = false) => (req, res, next) => {
-  const { title, completed, priority } = req.body || {};
+  const { title, completed, priority, status } = req.body || {};
 
   if (requireTitle && (typeof title !== 'string' || !title.trim())) {
     return res.status(400).json({
@@ -26,6 +26,13 @@ const validateTask = (requireTitle = false) => (req, res, next) => {
     return res.status(400).json({
       error: 'Validation Error',
       message: 'Priority must be either: low, medium, or high.'
+    });
+  }
+
+  if (status !== undefined && !['pending', 'working', 'completed'].includes(status)) {
+    return res.status(400).json({
+      error: 'Validation Error',
+      message: 'Status must be pending, working, or completed.'
     });
   }
 

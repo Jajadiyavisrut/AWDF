@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   title: {
     type: String,
     required: [true, 'Task title is required.'],
@@ -13,6 +19,14 @@ const taskSchema = new mongoose.Schema({
   completed: {
     type: Boolean,
     default: false
+  },
+  status: {
+    type: String,
+    enum: {
+      values: ['pending', 'working', 'completed'],
+      message: 'Status must be pending, working, or completed.'
+    },
+    default: 'pending'
   },
   priority: {
     type: String,

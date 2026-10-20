@@ -1,4 +1,13 @@
 const Log = require('../models/Log');
+const fs = require('fs');
+const path = require('path');
+
+const csvPath = path.join(__dirname, '..', 'log.csv');
+const csvHeader = 'Timestamp,Method,URL,IP,StatusCode\n';
+
+if (!fs.existsSync(csvPath)) {
+  fs.writeFileSync(csvPath, csvHeader);
+}
 
 const logger = (req, res, next) => {
   const timestamp = new Date().toISOString();
@@ -6,7 +15,14 @@ const logger = (req, res, next) => {
 
   // Listen to response finish to capture status code
   res.on('finish', () => {
-    // Log to MongoDB database instead of log.csv
+    const csvRow = [timestamp, req.method, req.originalUrl, ip, res.statusCode]
+      .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+      .join(',') + '\n';
+
+    fs.appendFile(csvPath, csvRow, (csvErr) => {
+      if (csvErr) console.error('Failed to write log to log.csv:', csvErr);
+    });
+
     Log.create({
       timestamp,
       method: req.method,
