@@ -21,6 +21,9 @@ RUN npm ci --omit=dev
 # Copy all backend application source files
 COPY . .
 
+# Give the runtime user ownership of the CSV log file without making the app directory writable.
+RUN touch log.csv && chown node:node log.csv
+
 # Use non-root node user for container security hardening
 USER node
 
