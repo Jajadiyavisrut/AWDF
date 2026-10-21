@@ -55,13 +55,15 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET must be set in the environment.');
 }
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/p7')
-  .then(async () => {
-    console.log('MongoDB connected successfully.');
-    console.log('User-owned task collections are ready.');
-  })
-  .catch((err) => console.error('MongoDB connection error:', err));
+// Connect to MongoDB when running the server, leaving isolated tests database-free.
+if (process.env.NODE_ENV !== 'test') {
+  mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/p7')
+    .then(async () => {
+      console.log('MongoDB connected successfully.');
+      console.log('User-owned task collections are ready.');
+    })
+    .catch((err) => console.error('MongoDB connection error:', err));
+}
 
 // Global middleware pipeline
 app.use(express.json());

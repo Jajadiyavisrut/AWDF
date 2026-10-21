@@ -23,15 +23,17 @@ const logger = (req, res, next) => {
       if (csvErr) console.error('Failed to write log to log.csv:', csvErr);
     });
 
-    Log.create({
-      timestamp,
-      method: req.method,
-      url: req.url,
-      ip,
-      statusCode: res.statusCode
-    }).catch((err) => {
-      console.error('Failed to write log to database:', err);
-    });
+    if (Log.db.readyState === 1) {
+      Log.create({
+        timestamp,
+        method: req.method,
+        url: req.url,
+        ip,
+        statusCode: res.statusCode
+      }).catch((err) => {
+        console.error('Failed to write log to database:', err);
+      });
+    }
   });
 
   console.log(`[${timestamp}] ${req.method} ${req.url}`);
