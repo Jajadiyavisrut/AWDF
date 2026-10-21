@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/*.test.js",
+    "test": "jest --runInBand test/ci.test.js",
     "test:p9": "node --test test/cache_integration.test.js",
     "test:p10": "node --test test/events_integration.test.js",
     "benchmark": "node test_cache_benchmark.js"
@@ -25,6 +25,7 @@
     "nodemailer": "^10.0.10"
   },
   "devDependencies": {
+    "jest": "^30.5.2",
     "supertest": "^7.3.1"
   }
 }

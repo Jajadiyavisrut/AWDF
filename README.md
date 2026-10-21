@@ -1,5 +1,7 @@
 # AWDF - Advanced Web Development Frameworks (ITUE301)
 
+[![CI Pipeline](https://github.com/Jajadiyavisrut/AWDF/actions/workflows/ci.yml/badge.svg)](https://github.com/Jajadiyavisrut/AWDF/actions/workflows/ci.yml)
+
 **CHAROTAR UNIVERSITY OF SCIENCE AND TECHNOLOGY**  
 **FACULTY OF TECHNOLOGY AND ENGINEERING**  
 **B. TECH (AIML / IT / CE / CSE)**
