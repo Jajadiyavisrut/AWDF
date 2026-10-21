@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "e8d91f42-4917-482a-bc91-20921471b810",
-    "name": "Practical 10 - Event-Driven Architecture & Notifications",
-    "description": "Postman API testing collection for CHAROTAR UNIVERSITY OF SCIENCE AND TECHNOLOGY - Practical 10: Asynchronous Processing with Event-Driven Architecture (Node.js EventEmitter).",
+    "_postman_id": "b1f8e029-6231-4a92-80ea-3105781a9f11",
+    "name": "Practical 11 - Dockerized Task Manager API",
+    "description": "Postman API testing collection for CHAROTAR UNIVERSITY OF SCIENCE AND TECHNOLOGY - Practical 11: Containerization with Docker and Docker Compose.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -15,7 +15,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"event.student@charusat.edu.in\",\n  \"password\": \"Password@123\"\n}"
+          "raw": "{\n  \"email\": \"docker.user@charusat.edu.in\",\n  \"password\": \"Password@123\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/register",
@@ -47,7 +47,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"event.student@charusat.edu.in\",\n  \"password\": \"Password@123\"\n}"
+          "raw": "{\n  \"email\": \"docker.user@charusat.edu.in\",\n  \"password\": \"Password@123\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/login",
@@ -57,7 +57,21 @@
       }
     },
     {
-      "name": "03. Tasks - POST Create Task (Emits task-created event)",
+      "name": "03. Tasks - GET All Tasks (Containerized Backend)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{authToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tasks",
+          "host": ["{{baseUrl}}"],
+          "path": ["tasks"]
+        }
+      }
+    },
+    {
+      "name": "04. Tasks - POST Create Task",
       "event": [
         {
           "listen": "test",
@@ -80,7 +94,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"title\": \"Implement Background EventEmitter Processing\",\n  \"description\": \"Verify non-blocking 201 Created response while notification runs asynchronously in background.\",\n  \"priority\": \"high\"\n}"
+          "raw": "{\n  \"title\": \"Verify Multi-Container Docker Compose Stack\",\n  \"description\": \"Test inter-service communication between React, Express, and MongoDB containers.\",\n  \"priority\": \"high\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/tasks",
@@ -90,40 +104,19 @@
       }
     },
     {
-      "name": "04. Tasks - PUT Update Task (Emits task-updated event)",
+      "name": "05. Health - Backend Container Healthcheck (/debug/cache)",
       "request": {
-        "method": "PUT",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{authToken}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"title\": \"Implement Background EventEmitter Processing (In Progress)\",\n  \"status\": \"working\",\n  \"priority\": \"high\"\n}"
-        },
+        "method": "GET",
+        "header": [],
         "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
+          "raw": "{{baseUrl}}/debug/cache",
           "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
+          "path": ["debug", "cache"]
         }
       }
     },
     {
-      "name": "05. Tasks - DELETE Task (Emits task-deleted event)",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          { "key": "Authorization", "value": "Bearer {{authToken}}" }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/tasks/{{taskId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["tasks", "{{taskId}}"]
-        }
-      }
-    },
-    {
-      "name": "06. Events - GET Notification Logs (/notifications/logs)",
+      "name": "06. Events - Notification Logs (/notifications/logs)",
       "request": {
         "method": "GET",
         "header": [],
@@ -131,20 +124,6 @@
           "raw": "{{baseUrl}}/notifications/logs",
           "host": ["{{baseUrl}}"],
           "path": ["notifications", "logs"]
-        }
-      }
-    },
-    {
-      "name": "07. Events - POST Clear Notification Logs (/notifications/clear)",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/notifications/clear",
-          "host": ["{{baseUrl}}"],
-          "path": ["notifications", "clear"]
         }
       }
     }
