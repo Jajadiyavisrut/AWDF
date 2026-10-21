@@ -23,6 +23,11 @@ const {
   getCustomStats,
   resetStats,
 } = require('./config/cache');
+const taskEvents = require('./events');
+const { registerListeners, getNotificationLogs, clearNotificationLogs } = require('./listeners');
+
+// Initialize Practical 10 background notification listeners
+registerListeners();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -200,6 +205,21 @@ app.post(['/cache/clear', '/debug/cache/clear'], (req, res) => {
   res.status(200).json({ message: 'In-memory cache flushed successfully.' });
 });
 
+// --- Practical 10: Event & Notification Telemetry Endpoint ---
+app.get('/notifications/logs', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    eventSystem: 'Node.js native EventEmitter',
+    totalNotifications: getNotificationLogs().length,
+    logs: getNotificationLogs(),
+  });
+});
+
+app.post('/notifications/clear', (req, res) => {
+  clearNotificationLogs();
+  res.status(200).json({ message: 'Notification logs cleared.' });
+});
+
 // --- Protected REST endpoints (CRUD using Mongoose) ---
 app.use('/tasks', authenticateToken);
 
@@ -260,7 +280,7 @@ app.get('/tasks/:id', validateId, async (req, res, next) => {
   }
 });
 
-// 3. POST /tasks - Create a new task (Invalidate cache on write - Step 4)
+// 3. POST /tasks - Create a new task (Invalidate cache on write & Emit 'task-created' event)
 app.post('/tasks', validateTask(true), async (req, res, next) => {
   try {
     const { title, description, priority } = req.body;
@@ -276,6 +296,15 @@ app.post('/tasks', validateTask(true), async (req, res, next) => {
     // Invalidate cached all-tasks collection for this user so stale data is never served
     invalidateUserTasks(req.user.id);
 
+    // Practical 10: Emit 'task-created' event asynchronously via EventEmitter
+    taskEvents.emit('task-created', {
+      taskId: newTask._id.toString(),
+      title: newTask.title,
+      ownerId: req.user.id,
+      ownerEmail: req.user.email || 'user',
+      timestamp: new Date().toISOString(),
+    });
+
     notifySessionUser(req.user.id, 'Task created', `Task "${newTask.title}" was created with status: ${newTask.status}.`);
     res.status(201).json(newTask);
   } catch (err) {
@@ -283,7 +312,7 @@ app.post('/tasks', validateTask(true), async (req, res, next) => {
   }
 });
 
-// 4. PUT & PATCH /tasks/:id - Update an existing task (Invalidates collection & single task)
+// 4. PUT & PATCH /tasks/:id - Update an existing task (Invalidates collection & single task, Emits 'task-updated')
 const handleUpdateTask = async (req, res, next) => {
   try {
     const { title, description, completed, priority, status } = req.body;
@@ -336,8 +365,18 @@ const handleUpdateTask = async (req, res, next) => {
       ? `Status changed from ${currentStatus} to ${nextStatus}.`
       : `Status remains ${nextStatus}.`;
 
-    // Invalidate cached all-tasks and single-task entry upon update (Step 4 & Supplementary 1)
+    // Invalidate cached all-tasks and single-task entry upon update
     invalidateUserTasks(req.user.id, req.params.id);
+
+    // Practical 10: Emit 'task-updated' event
+    taskEvents.emit('task-updated', {
+      taskId: updatedTask._id.toString(),
+      title: updatedTask.title,
+      status: nextStatus,
+      ownerId: req.user.id,
+      ownerEmail: req.user.email || 'user',
+      timestamp: new Date().toISOString(),
+    });
 
     notifySessionUser(
       req.user.id,
@@ -353,7 +392,7 @@ const handleUpdateTask = async (req, res, next) => {
 app.put('/tasks/:id', validateId, validateTask(false), handleUpdateTask);
 app.patch('/tasks/:id', validateId, handleUpdateTask);
 
-// 5. DELETE /tasks/:id - Delete a task
+// 5. DELETE /tasks/:id - Delete a task (Invalidates cache & Emits 'task-deleted')
 app.delete('/tasks/:id', validateId, async (req, res, next) => {
   try {
     const deletedTask = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
@@ -364,8 +403,17 @@ app.delete('/tasks/:id', validateId, async (req, res, next) => {
       });
     }
 
-    // Invalidate cached all-tasks and single-task entry upon deletion (Step 4 & Supplementary 1)
+    // Invalidate cached all-tasks and single-task entry upon deletion
     invalidateUserTasks(req.user.id, req.params.id);
+
+    // Practical 10: Emit 'task-deleted' event
+    taskEvents.emit('task-deleted', {
+      taskId: deletedTask._id.toString(),
+      title: deletedTask.title,
+      ownerId: req.user.id,
+      ownerEmail: req.user.email || 'user',
+      timestamp: new Date().toISOString(),
+    });
 
     notifySessionUser(req.user.id, 'Task deleted', `Task "${deletedTask.title}" was deleted.`);
     res.status(200).json({
