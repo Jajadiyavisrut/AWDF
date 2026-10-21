@@ -15,6 +15,8 @@ function TodoList() {
   const [tasks, setTasks] = useState([])
   const [userEmail, setUserEmail] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDescription, setNewTaskDescription] = useState('')
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
   const [activeFilter, setActiveFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -125,7 +127,7 @@ function TodoList() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ title: newTaskTitle, status: 'pending' }),
+      body: JSON.stringify({ title: newTaskTitle, description: newTaskDescription, status: 'pending' }),
     })
       .then((res) => {
         if (!res.ok) {
@@ -138,11 +140,34 @@ function TodoList() {
       .then((newTask) => {
         setTasks((prevTasks) => [newTask, ...prevTasks])
         setNewTaskTitle('')
+        setNewTaskDescription('')
         showNotification('Task created successfully!')
       })
       .catch((err) => {
         setActionError(err.message)
       })
+  }
+
+  const handleGenerateDescription = () => {
+    const title = newTaskTitle.trim()
+    if (!title) {
+      setActionError('Enter a task title before generating a description.')
+      return
+    }
+    setActionError(null)
+    setIsGeneratingDescription(true)
+    authenticatedFetch(`${API_BASE}/api/ai/generate-description`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    })
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Description generation is unavailable.')
+        setNewTaskDescription(data.description || '')
+      })
+      .catch((err) => setActionError(err.message || 'Description generation is unavailable.'))
+      .finally(() => setIsGeneratingDescription(false))
   }
 
   const getTaskStatus = (task) => task?.status || (task?.completed ? 'completed' : 'pending')
@@ -338,6 +363,26 @@ function TodoList() {
                   Add Task
                 </button>
               </div>
+              <label htmlFor="new-task-description-input">
+                <strong>Description:</strong>
+              </label>
+              <textarea
+                id="new-task-description-input"
+                className="search-input"
+                rows="3"
+                placeholder="Add details or generate a suggestion"
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+              />
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={handleGenerateDescription}
+                disabled={isGeneratingDescription}
+              >
+                {isGeneratingDescription ? 'Generating...' : 'Generate description'}
+              </button>
+              <small>AI-generated suggestion — review and edit before saving.</small>
             </form>
             <div className="status-filter-bar" role="group" aria-label="Filter tasks by status">
               {[

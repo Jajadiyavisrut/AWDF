@@ -25,6 +25,7 @@ const {
 } = require('./config/cache');
 const taskEvents = require('./events');
 const { registerListeners, getNotificationLogs, clearNotificationLogs } = require('./listeners');
+const OpenAI = require('openai');
 
 // Initialize Practical 10 background notification listeners
 registerListeners();
@@ -33,6 +34,14 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 const statusOrder = { pending: 0, working: 1, completed: 2 };
+const aiRequestTimes = new Map();
+let openaiClient;
+
+const getOpenAIClient = () => {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!openaiClient) openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return openaiClient;
+};
 
 const notifyUser = (email, subject, text) => {
   sendEmail({ to: email, subject, text }).catch((err) => {
@@ -205,6 +214,60 @@ app.post(['/cache/clear', '/debug/cache/clear'], (req, res) => {
   cache.flushAll();
   resetStats();
   res.status(200).json({ message: 'In-memory cache flushed successfully.' });
+});
+
+app.post('/api/ai/generate-description', authenticateToken, async (req, res) => {
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+  if (!title) {
+    return res.status(400).json({ error: 'Validation Error', message: 'A task title is required.' });
+  }
+  if (title.length > 200) {
+    return res.status(400).json({ error: 'Validation Error', message: 'Task title must be 200 characters or fewer.' });
+  }
+
+  const requestKey = `${req.user.id}:${title.toLowerCase()}`;
+  const lastRequest = aiRequestTimes.get(requestKey) || 0;
+  if (Date.now() - lastRequest < 60_000) {
+    return res.status(429).json({
+      error: 'Rate Limit',
+      message: 'Please wait before generating another description for this task.',
+    });
+  }
+  aiRequestTimes.set(requestKey, Date.now());
+
+  const client = getOpenAIClient();
+  if (!client) {
+    return res.status(503).json({
+      description: '',
+      fallback: true,
+      message: 'AI description generation is currently unavailable. You can enter a description manually.',
+    });
+  }
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Write one concise, practical task description in one or two sentences. Return only the description.',
+        },
+        { role: 'user', content: `Task title: ${title}` },
+      ],
+      max_tokens: 80,
+      temperature: 0.4,
+    });
+    const description = completion.choices?.[0]?.message?.content?.trim();
+    if (!description) throw new Error('Empty AI response');
+    return res.status(200).json({ description });
+  } catch (err) {
+    console.error('AI description generation failed:', err?.status || 'provider error');
+    return res.status(503).json({
+      description: '',
+      fallback: true,
+      message: 'AI description generation is temporarily unavailable. You can enter a description manually.',
+    });
+  }
 });
 
 // --- Practical 10: Event & Notification Telemetry Endpoint ---

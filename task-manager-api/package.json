@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "jest --runInBand test/ci.test.js",
+    "test": "jest --runInBand test/ci.test.js test/ai.test.js",
     "test:p9": "node --test test/cache_integration.test.js",
     "test:p10": "node --test test/events_integration.test.js",
     "benchmark": "node test_cache_benchmark.js"
@@ -22,7 +22,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.9.1",
     "node-cache": "^5.1.2",
-    "nodemailer": "^10.0.10"
+    "nodemailer": "^10.0.10",
+    "openai": "^7.39.0"
   },
   "devDependencies": {
     "jest": "^30.5.2",
