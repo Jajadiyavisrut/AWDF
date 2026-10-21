@@ -22,7 +22,7 @@ const {
   invalidateUserTasks,
   getCustomStats,
   resetStats,
-} = require('./cache');
+} = require('./config/cache');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -190,11 +190,11 @@ app.get('/me', authenticateToken, async (req, res, next) => {
 });
 
 // --- Cache Telemetry & Debug Endpoints (Practical 9 Supplementary) ---
-app.get('/cache/stats', (req, res) => {
+app.get(['/cache/stats', '/debug/cache'], (req, res) => {
   res.status(200).json(getCustomStats());
 });
 
-app.post('/cache/clear', (req, res) => {
+app.post(['/cache/clear', '/debug/cache/clear'], (req, res) => {
   cache.flushAll();
   resetStats();
   res.status(200).json({ message: 'In-memory cache flushed successfully.' });
@@ -209,9 +209,9 @@ app.get('/tasks', async (req, res, next) => {
     const userId = req.user?.id || 'default';
     const cacheKey = getUserTasksKey(userId);
 
-    // Cache check: HIT -> return cached data immediately
+    // Cache check: HIT -> return cached data immediately (handles empty arrays correctly)
     const cachedTasks = cache.get(cacheKey);
-    if (cachedTasks) {
+    if (cachedTasks !== undefined && cachedTasks !== null) {
       recordHit();
       res.setHeader('X-Cache', 'HIT');
       return res.status(200).json(cachedTasks);
@@ -236,7 +236,7 @@ app.get('/tasks/:id', validateId, async (req, res, next) => {
 
     // Cache check for single task
     const cachedTask = cache.get(cacheKey);
-    if (cachedTask) {
+    if (cachedTask !== undefined && cachedTask !== null) {
       recordHit();
       res.setHeader('X-Cache', 'HIT');
       return res.status(200).json(cachedTask);
@@ -283,8 +283,8 @@ app.post('/tasks', validateTask(true), async (req, res, next) => {
   }
 });
 
-// 4. PUT /tasks/:id - Update an existing task
-app.put('/tasks/:id', validateId, validateTask(), async (req, res, next) => {
+// 4. PUT & PATCH /tasks/:id - Update an existing task (Invalidates collection & single task)
+const handleUpdateTask = async (req, res, next) => {
   try {
     const { title, description, completed, priority, status } = req.body;
     const existingTask = await Task.findOne({ _id: req.params.id, owner: req.user.id });
@@ -311,10 +311,17 @@ app.put('/tasks/:id', validateId, validateTask(), async (req, res, next) => {
       });
     }
 
+    const updateFields = {};
+    if (title !== undefined) updateFields.title = title;
+    if (description !== undefined) updateFields.description = description;
+    if (completed !== undefined) updateFields.completed = completed;
+    if (priority !== undefined) updateFields.priority = priority;
+    if (status !== undefined) updateFields.status = status;
+
     const updatedTask = await Task.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { title, description, completed, priority, status },
-      { new: true, runValidators: true }
+      updateFields,
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedTask) {
@@ -341,7 +348,10 @@ app.put('/tasks/:id', validateId, validateTask(), async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+app.put('/tasks/:id', validateId, validateTask(false), handleUpdateTask);
+app.patch('/tasks/:id', validateId, handleUpdateTask);
 
 // 5. DELETE /tasks/:id - Delete a task
 app.delete('/tasks/:id', validateId, async (req, res, next) => {
@@ -383,7 +393,11 @@ app.use((req, res) => {
 // Global Error Handler Middleware (MUST be last)
 app.use(errorHandler);
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Task Manager Server running on port ${PORT}`);
-});
+// Start the server if executed directly
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Task Manager Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
