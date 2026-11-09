@@ -60,7 +60,15 @@ if __name__ == "__main__":
     finally:
         stop_process(frontend)
         stop_process(backend)
-        if frontend:
-            frontend.wait(timeout=5)
-        if backend:
-            backend.wait(timeout=5)
+        try:
+            if frontend:
+                frontend.wait(timeout=3)
+        except Exception:
+            if frontend and frontend.poll() is None:
+                frontend.kill()
+        try:
+            if backend:
+                backend.wait(timeout=3)
+        except Exception:
+            if backend and backend.poll() is None:
+                backend.kill()

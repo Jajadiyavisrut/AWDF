@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "university": "CHAROTAR UNIVERSITY OF SCIENCE AND TECHNOLOGY",
+    "faculty": "Faculty of Technology and Engineering",
+    "course": "B.Tech IT/CE/CSE/AIML",
+    "subject": "Advanced Web Development Frameworks (ITUE301)",
+    "practical": "Practical 9: In-Memory Caching and Query Optimization",
+    "timestamp": "2026-11-09T06:03:21.983Z",
+    "environment": {
+      "nodeVersion": "v24.12.0",
+      "platform": "win32",
+      "arch": "x64",
+      "database": "MongoDB (Mongoose)",
+      "cacheEngine": "node-cache v5.1.2",
+      "ttlSeconds": 60
+    }
+  },
+  "dataset": {
+    "sampleTasksCount": 15,
+    "testUserId": "6af16227187541f72b7d6500",
+    "testTaskId": "6af16227187541f72b7d6503"
+  },
+  "readings": {
+    "uncached": [
+      {
+        "iteration": 1,
+        "durationMs": 61.342,
+        "cacheHeader": "MISS",
+        "itemCount": 15
+      },
+      {
+        "iteration": 2,
+        "durationMs": 85.251,
+        "cacheHeader": "MISS",
+        "itemCount": 15
+      },
+      {
+        "iteration": 3,
+        "durationMs": 108.456,
+        "cacheHeader": "MISS",
+        "itemCount": 15
+      },
+      {
+        "iteration": 4,
+        "durationMs": 85.16,
+        "cacheHeader": "MISS",
+        "itemCount": 15
+      },
+      {
+        "iteration": 5,
+        "durationMs": 83.99,
+        "cacheHeader": "MISS",
+        "itemCount": 15
+      }
+    ],
+    "cached": [
+      {
+        "iteration": 1,
+        "durationMs": 6.032,
+        "cacheHeader": "HIT",
+        "itemCount": 15
+      },
+      {
+        "iteration": 2,
+        "durationMs": 6.187,
+        "cacheHeader": "HIT",
+        "itemCount": 15
+      },
+      {
+        "iteration": 3,
+        "durationMs": 7.468,
+        "cacheHeader": "HIT",
+        "itemCount": 15
+      },
+      {
+        "iteration": 4,
+        "durationMs": 7.873,
+        "cacheHeader": "HIT",
+        "itemCount": 15
+      },
+      {
+        "iteration": 5,
+        "durationMs": 7.794,
+        "cacheHeader": "HIT",
+        "itemCount": 15
+      }
+    ],
+    "singleTask": {
+      "missMs": 109.32,
+      "hitMs": 9.848,
+      "invalidationVerified": true
+    }
+  },
+  "statistics": {
+    "uncached": {
+      "sum": 424.199,
+      "avg": 84.84,
+      "median": 85.16,
+      "min": 61.342,
+      "max": 108.456,
+      "count": 5
+    },
+    "cached": {
+      "sum": 35.354,
+      "avg": 7.071,
+      "median": 7.468,
+      "min": 6.032,
+      "max": 7.873,
+      "count": 5
+    },
+    "improvementPercent": 91.67,
+    "speedupFactor": 12,
+    "formulaUsed": {
+      "average": "sum(observed_times) / n",
+      "improvement": "((uncachedAvg - cachedAvg) / uncachedAvg) * 100"
+    }
+  },
+  "cacheTelemetry": {
+    "status": "online",
+    "hits": 1,
+    "misses": 2,
+    "totalRequests": 3,
+    "hitRatio": "33.3%",
+    "ttlSeconds": 60,
+    "cachedKeysCount": 1,
+    "keys": [
+      "tasks:6af16227187541f72b7d6500:all"
+    ],
+    "internalStats": {
+      "hits": 1,
+      "misses": 2,
+      "keys": 1,
+      "ksize": 34,
+      "vsize": 600
+    }
+  }
+}
